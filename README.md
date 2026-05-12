@@ -47,7 +47,7 @@ await renderer.fillText(ctx, text, 50, 80, {
 });
 
 const buffer = await canvas.toBuffer("png");
-await writeFile("./basic.png", buffer);
+await writeFile("basic.png", buffer);
 ```
 
 ## Run the Example
