@@ -1,10 +1,7 @@
 import { Canvas, loadImage, type CanvasRenderingContext2D } from 'skia-canvas';
-import $glyphMetrics from "../../json/fontMetrics.json" with { type: "json" };
-import { readdir } from "node:fs/promises";
+import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { parseMinecraftText } from './minecraftPrefix.js';
-
-const glyphMetrics: GlyphMetricsFile = $glyphMetrics;
 
 type GlyphMetrics = Record<string, { trimLeft?: number; visibleWidth?: number }>;
 type FontImage = { canvas: Canvas; ctx: CanvasRenderingContext2D; width: number; height: number; scale: number; isUpdscaled: boolean };
@@ -19,13 +16,20 @@ interface GlyphMetricsFile { ascii: GlyphMetrics; unicode: GlyphMetrics; }
 export class FontRender {
     private images: Map<string, FontImage>;
     private glyphCache: Map<string, GlyphBitmap>;
+    private glyphMetrics: GlyphMetricsFile | null;
 
     public constructor() {
         this.images = new Map();
         this.glyphCache = new Map();
+        this.glyphMetrics = null;
     }
 
     public async loadImages(fontPath: string) {
+        this.images.clear();
+        this.glyphCache.clear();
+
+        await this.loadMetrics(fontPath);
+
         const files = await readdir(fontPath);
         const p = files.filter((file) => file.endsWith(".png"));
 
@@ -84,6 +88,21 @@ export class FontRender {
         }
 
         return currentX - x;
+    }
+
+    private async loadMetrics(fontPath: string) {
+        const metricsPath = join(fontPath, "../json/fontMetrics.json");
+        const json = await readFile(metricsPath, "utf8");
+
+        this.glyphMetrics = JSON.parse(json) as GlyphMetricsFile;
+    }
+
+    private getMetrics() {
+        if (!this.glyphMetrics) {
+            throw new Error("Font metrics are not loaded. Call loadImages() before rendering text.");
+        }
+
+        return this.glyphMetrics;
     }
 
     private drawChar(ctx: CanvasRenderingContext2D, char: string, x: number, y: number, options: Required<TextOptions>): number {
@@ -230,7 +249,9 @@ export class FontRender {
 
         const { x, y } = location;
         const scale = image.scale;
-        const characterSize = glyphMetrics[usesAsciiAtlas ? "ascii" : "unicode"][unicode.toUpperCase()];
+
+        const metrics = this.getMetrics();
+        const characterSize = metrics[usesAsciiAtlas ? "ascii" : "unicode"][unicode.toUpperCase()];
 
         const trimLeft = characterSize?.trimLeft ?? 0;
         const visibleWidth = characterSize?.visibleWidth ?? 16;
@@ -281,7 +302,7 @@ export class FontRender {
     }
 
     private hasAsciiGlyph(unicode: string) {
-        return unicode.toUpperCase() in glyphMetrics.ascii;
+        return unicode.toUpperCase() in this.getMetrics().ascii;
     }
 
     private toUnicode(char: string) {
