@@ -6,7 +6,7 @@ It supports Minecraft color codes, shadows, bold, italic, Unicode glyphs, HD ASC
 
 ## Features
 
-- Minecraft color codes: `&a`, `&c`, `§d`
+- Minecraft color codes from `&0` to `&f` and `§0` to `§f`
 - Formatting codes: bold `&l`, italic `&o`, reset `&r`
 - Automatic Minecraft-style shadow colors
 - ASCII and Unicode font textures
