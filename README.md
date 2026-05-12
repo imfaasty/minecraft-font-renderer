@@ -149,15 +149,15 @@ This helps when rendering repeated text, leaderboards, and stat cards.
 
 ### Normal Font
 
-![Normal font preview](./previews/basic.png)
+![Normal font preview](https://raw.githubusercontent.com/imfaasty/minecraft-font-renderer/main/previews/basic.png)
 
 ### HD Font
 
-![HD font preview](./previews/basic_hd.png)
+![HD font preview](https://raw.githubusercontent.com/imfaasty/minecraft-font-renderer/main/previews/basic_hd.png)
 
 ### Leaderboard Example
 
-![Leaderboard preview](./previews/leaderboard.png)
+![Leaderboard preview](https://raw.githubusercontent.com/imfaasty/minecraft-font-renderer/main/previews/leaderboard.png)
 
 ## Disclaimer
 
