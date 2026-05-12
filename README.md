@@ -157,5 +157,9 @@ This helps when rendering repeated text, leaderboards, and stat cards.
 
 ![Leaderboard preview](./previews/leaderboard.png)
 
+## Disclaimer
+
+Minecraft is a trademark of Mojang Studios/Microsoft. This project is not affiliated with or endorsed by Mojang Studios or Microsoft.
+
 ## License
 This project is licensed under the ISC License.
