@@ -1,0 +1,48 @@
+{
+  "name": "minecraft-font-renderer",
+  "version": "1.0.0",
+  "description": "Render Minecraft formatted text with colors, shadows, bold, italic, and HD font textures",
+  "keywords": [
+    "minecraft",
+    "font-renderer",
+    "minecraft-font",
+    "text-renderer",
+    "skia-canvas",
+    "canvas"
+  ],
+  "license": "ISC",
+  "author": "faasty",
+  "type": "module",
+  "main": "./dist/index.js",
+  "types": "./dist/index.d.ts",
+  "scripts": {
+    "build": "tsc",
+    "typecheck": "tsc --noEmit",
+    "prepublishOnly": "npm run build",
+    "gen:metrics": "tsx scripts/genFontMetrics.ts",
+    "test": "echo \"Error: no test specified\" && exit 1"
+  },
+  "files": [
+    "dist",
+    "assets",
+    "json",
+    "README.md",
+    "LICENSE"
+  ],
+  "dependencies": {
+    "skia-canvas": "^3.0.8"
+  },
+  "devDependencies": {
+    "@eslint/js": "^10.0.1",
+    "@types/node": "^25.6.0",
+    "eslint": "^10.3.0",
+    "tsx": "^4.21.0",
+    "typescript": "^6.0.3"
+  },
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    }
+  }
+}
