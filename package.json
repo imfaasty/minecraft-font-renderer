@@ -21,7 +21,7 @@
     "typecheck": "tsc --noEmit",
     "prepublishOnly": "npm run build",
     "gen:metrics": "tsx scripts/genFontMetrics.ts",
-    "test": "echo \"Error: no test specified\" && exit 1"
+    "test": "npm run typecheck"
   },
   "files": [
     "dist",
@@ -47,5 +47,13 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     }
+  },
+  "homepage": "https://github.com/imfaasty/minecraft-font-renderer#readme",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/imfaasty/minecraft-font-renderer.git"
+  },
+  "bugs": {
+    "url": "https://github.com/imfaasty/minecraft-font-renderer/issues"
   }
 }
