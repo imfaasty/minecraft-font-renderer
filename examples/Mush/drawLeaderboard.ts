@@ -1,10 +1,10 @@
-import type { MinecraftTextSegment } from "../../render/minecraftPrefix.js";
+import type { MinecraftTextSegment } from "../../src/render/minecraftPrefix.js";
 import { type CanvasRenderingContext2D } from "skia-canvas"
-import { getMinecraftShadowColor } from "../../render/minecraftColors.js";
-import { FontRender } from "../../index.js";
+import { getMinecraftShadowColor } from "../../src/render/minecraftColors.js";
+import { FontRender, defaultFontPath } from "../../src/index.js";
 
 const renderer = new FontRender();
-await renderer.loadImages("./src/img");
+await renderer.loadImages(defaultFontPath);
 
 export async function drawSegments(ctx: CanvasRenderingContext2D, segments: MinecraftTextSegment[], x: number, y: number, size: number) {
     let currentX = x;

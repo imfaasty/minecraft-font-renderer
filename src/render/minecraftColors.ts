@@ -53,4 +53,3 @@ export function getMinecraftColor(code: string): string | null {
 function toHex(value: number): string {
     return value.toString(16).padStart(2, "0").toUpperCase();
 };
-

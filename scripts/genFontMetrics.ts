@@ -1,6 +1,7 @@
 import { readdir, writeFile } from "node:fs/promises";
 import { join } from "node:path";
 import { Canvas, loadImage, type CanvasRenderingContext2D } from "skia-canvas";
+import { asciiAtlasLayout } from "../src/render/asciiAtlasLayout.js";
 
 type GlyphSize = {
     trimLeft: number;
@@ -16,10 +17,6 @@ const assetsPath = "assets";
 const outputPath = "json/fontMetrics.json";
 
 const cell_size = 16;
-
-function toUnicodeHex(code: number) {
-    return code.toString(16).toUpperCase().padStart(4, '0');
-}
 
 async function loadImageData(path: string) {
     const img = await loadImage(path);
@@ -65,37 +62,40 @@ function measureCell(ctx: CanvasRenderingContext2D, cellx: number, celly: number
 
     if (maxX === -1) {
         return {
-            trimLeft : 0,
+            trimLeft: 0,
             visibleWidth: 0
         }
     }
 
     return {
-        trimLeft : Math.floor(minX / scale),
+        trimLeft: Math.floor(minX / scale),
         visibleWidth: Math.ceil((maxX - minX + 1) / scale)
     };
 }
 
 async function generateAsciiSizes(): Promise<Record<string, GlyphSize>> {
-  const { ctx, scale } = await loadImageData(join(assetsPath, "ascii.png"));
+    const { ctx, scale } = await loadImageData(join(assetsPath, "ascii.png"));
 
-  const ascii: Record<string, GlyphSize> = {};
+    const ascii: Record<string, GlyphSize> = {};
 
-  for (let code = 0; code < 256; code++) {
-    const unicode = toUnicodeHex(code);
+    for (let y = 0; y < asciiAtlasLayout.length; y++) {
+        const row = asciiAtlasLayout[y]!;
 
-    const x = code % 16;
-    const y = Math.floor(code / 16);
+        for (let x = 0; x < row.length; x++) {
+            const unicode = row[x]!;
 
-    ascii[unicode] = measureCell(ctx, x, y, scale);
-  }
+            if (unicode === "0000") continue;
 
-  ascii["0020"] = {
-    trimLeft : 0,
-    visibleWidth: 10,
-  };
+            ascii[unicode] = measureCell(ctx, x, y, scale);
+        }
+    }
 
-  return ascii;
+    ascii["0020"] = {
+        trimLeft: 0,
+        visibleWidth: 10,
+    };
+
+    return ascii;
 }
 
 async function generateUnicodeSizes(): Promise<Record<string, GlyphSize>> {
@@ -126,14 +126,13 @@ async function generateUnicodeSizes(): Promise<Record<string, GlyphSize>> {
 }
 
 async function main() {
-    console.log("...")
     const sizes: Sizes = {
         ascii: await generateAsciiSizes(),
         unicode: await generateUnicodeSizes()
     };
 
-    await writeFile(outputPath, `${JSON.stringify(sizes, null, 2)}\n`)
-    console.log("OK")
+    await writeFile(outputPath, `${JSON.stringify(sizes, null, 2)}\n`);
+    console.log("Generated fontMetrics.json");
 }
 
 await main();

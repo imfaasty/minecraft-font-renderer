@@ -117,6 +117,8 @@ unicode_page_01.png
 ...
 ```
 
+ASCII glyphs are mapped from the included atlas layout, so extended characters such as `Ω`, `Ç`, `ü`, and box-drawing symbols can render from `ascii.png` when available.
+
 ## Font Metrics
 
 Glyph metrics are generated from the font textures by scanning visible pixels in each glyph cell.

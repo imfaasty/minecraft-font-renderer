@@ -2,6 +2,7 @@ import { Canvas, loadImage, type CanvasRenderingContext2D } from 'skia-canvas';
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { parseMinecraftText } from './minecraftPrefix.js';
+import { asciiAtlasLayout } from "./asciiAtlasLayout.js";
 
 type GlyphMetrics = Record<string, { trimLeft?: number; visibleWidth?: number }>;
 type FontImage = { canvas: Canvas; ctx: CanvasRenderingContext2D; width: number; height: number; scale: number; isUpdscaled: boolean };
@@ -16,11 +17,13 @@ interface GlyphMetricsFile { ascii: GlyphMetrics; unicode: GlyphMetrics; }
 export class FontRender {
     private images: Map<string, FontImage>;
     private glyphCache: Map<string, GlyphBitmap>;
+    private asciiPositions: Map<string, CharacterPosition>;
     private glyphMetrics: GlyphMetricsFile | null;
 
     public constructor() {
         this.images = new Map();
         this.glyphCache = new Map();
+        this.asciiPositions = this.createAsciiPositionMap();
         this.glyphMetrics = null;
     }
 
@@ -142,9 +145,7 @@ export class FontRender {
         ctx.beginPath();
 
         for (const pixel of glyph.pixels) {
-            const italicOffset = options.italic
-                ? this.getItalicOffset(pixel.y, glyph.scale, drawSize)
-                : 0;
+            const italicOffset = options.italic ? this.getItalicOffset(pixel.y, glyph.scale, drawSize) : 0;
 
             this.addPixelRect(
                 ctx,
@@ -210,17 +211,19 @@ export class FontRender {
         if (!source) return null;
 
         const { x, y, width, height, image, scale } = source;
-        const imageData = image.ctx.getImageData(x, y, width, height);
-
         const pixels: { x: number; y: number }[] = [];
 
-        for (let i = 0; i < imageData.data.length; i += 4) {
-            if (imageData.data[i + 3] === 0) continue;
+        if (width > 0 && height > 0) {
+            const imageData = image.ctx.getImageData(x, y, width, height);
 
-            pixels.push({
-                x: (i / 4) % width,
-                y: Math.floor(i / 4 / width),
-            });
+            for (let i = 0; i < imageData.data.length; i += 4) {
+                if (imageData.data[i + 3] === 0) continue;
+
+                pixels.push({
+                    x: (i / 4) % width,
+                    y: Math.floor(i / 4 / width),
+                });
+            }
         }
 
         const glyph = {
@@ -239,19 +242,21 @@ export class FontRender {
 
     private resolveGlyphSource(char: string, hdFont: boolean): GlyphSource | null {
         const unicode = this.toUnicode(char);
-        const usesAsciiAtlas = this.hasAsciiGlyph(unicode);
-        const image = this.getAtlas(unicode, usesAsciiAtlas, hdFont);
+        const glyphUnicode = unicode;
+
+        const usesAsciiAtlas = this.hasAsciiGlyph(glyphUnicode);
+        const image = this.getAtlas(glyphUnicode, usesAsciiAtlas, hdFont);
 
         if (!image) return null;
 
-        const location = this.getCharacterIndexLocation(char, usesAsciiAtlas);
+        const location = this.getCharacterIndexLocation(glyphUnicode, usesAsciiAtlas);
         if (!location) return null;
 
         const { x, y } = location;
         const scale = image.scale;
 
         const metrics = this.getMetrics();
-        const characterSize = metrics[usesAsciiAtlas ? "ascii" : "unicode"][unicode.toUpperCase()];
+        const characterSize = metrics[usesAsciiAtlas ? "ascii" : "unicode"][glyphUnicode.toUpperCase()];
 
         const trimLeft = characterSize?.trimLeft ?? 0;
         const visibleWidth = characterSize?.visibleWidth ?? 16;
@@ -278,27 +283,38 @@ export class FontRender {
         return this.images.get(`${unicode[0]}${unicode[1]}`);
     }
 
-    private getCharacterIndexLocation(char: string, usesAsciiAtlas: boolean) {
+    private getCharacterIndexLocation(glyphUnicode: string, usesAsciiAtlas: boolean) {
 
         if (usesAsciiAtlas) {
-            return this.getAsciiPosition(char);
+            return this.getAsciiPosition(glyphUnicode);
         }
 
-        const unicode = this.toUnicode(char)
-
         return {
-            x: Number.parseInt(unicode[3]!, 16),
-            y: Number.parseInt(unicode[2]!, 16),
+            x: Number.parseInt(glyphUnicode[3]!, 16),
+            y: Number.parseInt(glyphUnicode[2]!, 16),
         }
     }
 
-    private getAsciiPosition(char: string): CharacterPosition {
-        const code = char.charCodeAt(0);
+    private getAsciiPosition(unicode: string): CharacterPosition {
+        return this.asciiPositions.get(unicode.toUpperCase()) ?? { x: 0, y: 0 };
+    }
 
-        return {
-            x: code % 16,
-            y: Math.floor(code / 16)
+    private createAsciiPositionMap(): Map<string, CharacterPosition> {
+        const map = new Map<string, CharacterPosition>();
+
+        for (let y = 0; y < asciiAtlasLayout.length; y++) {
+            const row = asciiAtlasLayout[y]!;
+
+            for (let x = 0; x < row.length; x++) {
+                const unicode = row[x]!;
+
+                if (unicode !== "0000") {
+                    map.set(unicode, { x, y });
+                }
+            }
         }
+
+        return map;
     }
 
     private hasAsciiGlyph(unicode: string) {
