@@ -75,8 +75,14 @@ export class FontRender {
         return currentX - x;
     }
 
-    public async fillText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: Omit<TextOptions, "color" | "shadowColor" | "bold" | "italic"> = {}) {
-        const segments = parseMinecraftText(text);
+    public async fillText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: TextOptions = {}) {
+        const segments = parseMinecraftText(text, {
+            ...(options.color !== undefined && { color: options.color }),
+            ...(options.shadowColor !== undefined && { shadowColor: options.shadowColor }),
+            ...(options.bold !== undefined && { bold: options.bold }),
+            ...(options.italic !== undefined && { italic: options.italic }),
+        });
+
         let currentX = x;
 
         for (const segment of segments) {

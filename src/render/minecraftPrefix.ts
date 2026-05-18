@@ -6,10 +6,13 @@ export type MinecraftTextSegment = MinecraftStyle & {
 
 const format_prefixes = new Set(["\u00A7", "&"]);
 
-export function parseMinecraftText(text: string): MinecraftTextSegment[] {
+export function parseMinecraftText(text: string, initialStyle: Partial<MinecraftStyle> = {}): MinecraftTextSegment[] {
     const segments: MinecraftTextSegment[] = [];
 
-    let state = createDefaultStyle();
+    const baseStyle = createStyle(initialStyle);
+    const resetStyle = createDefaultStyle();
+
+    let state = baseStyle;
     let currentText = "";
 
     function flush() {
@@ -34,7 +37,7 @@ export function parseMinecraftText(text: string): MinecraftTextSegment[] {
                 flush();
 
                 state = {
-                    ...createDefaultStyle(),
+                    ...resetStyle,
                     color,
                     shadowColor: getMinecraftShadowColor(color),
                 };
@@ -59,7 +62,7 @@ export function parseMinecraftText(text: string): MinecraftTextSegment[] {
 
             if (code === "r") {
                 flush();
-                state = createDefaultStyle();
+                state = resetStyle;
                 i++;
                 continue;
             }
@@ -73,12 +76,17 @@ export function parseMinecraftText(text: string): MinecraftTextSegment[] {
 };
 
 function createDefaultStyle(): MinecraftStyle {
+    return createStyle();
+}
+
+function createStyle(style: Partial<MinecraftStyle> = {}): MinecraftStyle {
     const color = "#FFFFFF";
+    const resolvedColor = style.color ?? color;
 
     return {
-        color,
-        shadowColor: getMinecraftShadowColor(color),
-        bold: false,
-        italic: false,
+        color: resolvedColor,
+        shadowColor: style.shadowColor ?? getMinecraftShadowColor(resolvedColor),
+        bold: style.bold ?? false,
+        italic: style.italic ?? false,
     };
 }

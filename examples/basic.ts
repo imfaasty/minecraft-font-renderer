@@ -13,13 +13,13 @@ ctx.imageSmoothingEnabled = false;
 ctx.fillStyle = "#000000";
 ctx.fillRect(0, 0, canvas.width, canvas.height);
 
-const text = "&cHello World!"
+const text = "&bHello World!"
 
 await renderer.fillText(ctx, text, 50, 80, {
     shadow: true,
     size: 8,
-    hdFont: false
-})
+    hdFont: false,   
+});
 
 const buffer = await canvas.toBuffer("png");
 await writeFile("basic.png", buffer);
