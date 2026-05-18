@@ -1,6 +1,6 @@
 {
   "name": "minecraft-font-renderer",
-  "version": "1.0.2",
+  "version": "1.0.3",
   "description": "Render Minecraft formatted text with colors, shadows, bold, italic, and HD font textures",
   "keywords": [
     "minecraft",
