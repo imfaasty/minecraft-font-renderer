@@ -40,7 +40,7 @@ ctx.fillRect(0, 0, canvas.width, canvas.height);
 
 const text = "&bHello World!";
 
-await renderer.fillText(ctx, text, 50, 80, {
+renderer.fillText(ctx, text, 50, 80, {
   shadow: true,
   size: 8,
   hdFont: false,
@@ -86,7 +86,7 @@ When using `renderer.fillText(...)`, parsing is handled automatically.
 The included font assets provide `ascii_hd.png`. Enable HD ASCII glyphs with:
 
 ```ts
-await renderer.fillText(ctx, "&bHello World!", 50, 80, {
+renderer.fillText(ctx, "&bHello World!", 50, 80, {
   shadow: true,
   size: 8,
   hdFont: true,

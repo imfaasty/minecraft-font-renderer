@@ -54,7 +54,7 @@ export class FontRender {
         }
     }
 
-    public async drawText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: TextOptions = {}) {
+    public drawText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: TextOptions = {}) {
         const color = options.color ?? "#ffffff";
         const shadow = options.shadow ?? false;
         const shadowColor = options.shadowColor ?? "rgba(0, 0, 0, 0.5)";
@@ -75,7 +75,7 @@ export class FontRender {
         return currentX - x;
     }
 
-    public async fillText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: TextOptions = {}) {
+    public fillText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: TextOptions = {}) {
         const segments = parseMinecraftText(text, {
             ...(options.color !== undefined && { color: options.color }),
             ...(options.shadowColor !== undefined && { shadowColor: options.shadowColor }),
@@ -86,7 +86,7 @@ export class FontRender {
         let currentX = x;
 
         for (const segment of segments) {
-            const width = await this.drawText(ctx, segment.text, currentX, y, {
+            const width = this.drawText(ctx, segment.text, currentX, y, {
                 ...options,
                 color: segment.color,
                 shadowColor: segment.shadowColor,

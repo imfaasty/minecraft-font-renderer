@@ -15,7 +15,7 @@ ctx.fillRect(0, 0, canvas.width, canvas.height);
 
 const text = "&bHello World!"
 
-await renderer.fillText(ctx, text, 50, 80, {
+renderer.fillText(ctx, text, 50, 80, {
     shadow: true,
     size: 8,
     hdFont: false,   
