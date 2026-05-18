@@ -18,7 +18,7 @@ const text = "&bHello World!"
 renderer.fillText(ctx, text, 50, 80, {
     shadow: true,
     size: 8,
-    hdFont: false,   
+    hdFont: false,
 });
 
 const buffer = await canvas.toBuffer("png");

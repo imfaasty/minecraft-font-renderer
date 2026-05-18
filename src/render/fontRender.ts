@@ -1,12 +1,14 @@
 import { Canvas, loadImage, type CanvasRenderingContext2D } from 'skia-canvas';
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { parseMinecraftText } from './minecraftPrefix.js';
+import { parseMinecraftText, type MinecraftTextSegment } from './minecraftPrefix.js';
 import { asciiAtlasLayout } from "./asciiAtlasLayout.js";
 
 type GlyphMetrics = Record<string, { trimLeft?: number; visibleWidth?: number }>;
 type FontImage = { canvas: Canvas; ctx: CanvasRenderingContext2D; width: number; height: number; scale: number; isUpdscaled: boolean };
 type TextOptions = { color?: string; shadow?: boolean; shadowColor?: string; bold?: boolean; italic?: boolean; size?: number; hdFont?: boolean };
+type TextAlign = "left" | "center" | "right";
+type FillTextOptions = Pick<TextOptions, "shadow" | "size" | "hdFont"> & { align?: TextAlign };
 type CharacterLayer = { x: number; y: number; color: string };
 type GlyphBitmap = { pixels: { x: number, y: number }[]; width: number; height: number; scale: number; advance: number; shadowDistance: number; boldLayerCount: number };
 type GlyphSource = { x: number; y: number; width: number; height: number; image: FontImage; scale: number; advance: number; shadowDistance: number; boldLayerCount: number };
@@ -54,7 +56,7 @@ export class FontRender {
         }
     }
 
-    public drawText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: TextOptions = {}) {
+    private drawText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: TextOptions = {}) {
         const color = options.color ?? "#ffffff";
         const shadow = options.shadow ?? false;
         const shadowColor = options.shadowColor ?? "rgba(0, 0, 0, 0.5)";
@@ -75,15 +77,11 @@ export class FontRender {
         return currentX - x;
     }
 
-    public fillText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: TextOptions = {}) {
-        const segments = parseMinecraftText(text, {
-            ...(options.color !== undefined && { color: options.color }),
-            ...(options.shadowColor !== undefined && { shadowColor: options.shadowColor }),
-            ...(options.bold !== undefined && { bold: options.bold }),
-            ...(options.italic !== undefined && { italic: options.italic }),
-        });
+    public fillText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: FillTextOptions = {}) {
+        const segments = parseMinecraftText(text);
 
-        let currentX = x;
+        let currentX = this.getAlignedStartX(x, segments, options);
+        const startX = currentX;
 
         for (const segment of segments) {
             const width = this.drawText(ctx, segment.text, currentX, y, {
@@ -96,7 +94,7 @@ export class FontRender {
             currentX += width;
         }
 
-        return currentX - x;
+        return currentX - startX;
     }
 
     private async loadMetrics(fontPath: string) {
@@ -112,6 +110,64 @@ export class FontRender {
         }
 
         return this.glyphMetrics;
+    }
+
+    private measureText(text: string, options: TextOptions = {}): number {
+        const color = options.color ?? "#ffffff";
+        const shadow = options.shadow ?? false;
+        const shadowColor = options.shadowColor ?? "rgba(0, 0, 0, 0.5)";
+        const bold = options.bold ?? false;
+        const size = options.size ?? 2;
+        const italic = options.italic ?? false;
+        const hdFont = options.hdFont ?? false;
+
+        const textOptions = { color, shadow, shadowColor, bold, italic, size, hdFont };
+        let width = 0;
+
+        for (const char of text) {
+            width += this.measureChar(char, textOptions);
+        }
+        
+        return width;
+    }
+
+    private measureSegments(segments: MinecraftTextSegment[], options: FillTextOptions): number {
+        let width = 0;
+
+        for (const segment of segments) {
+            width += this.measureText(segment.text, {
+                ...options,
+                color: segment.color,
+                shadowColor: segment.shadowColor,
+                bold: segment.bold,
+                italic: segment.italic,
+            });
+        }
+
+        return width;
+    }
+
+    private getAlignedStartX(x: number, segments: MinecraftTextSegment[], options: FillTextOptions): number {
+        const align = options.align ?? "left";
+
+        if (align === "left") return x;
+
+        const width = this.measureSegments(segments, options);
+
+        if (align === "center") return x - width / 2;
+        if (align === "right") return x - width;
+
+        return x;
+    }
+
+    private measureChar(char: string, options: Required<TextOptions>): number {
+        const glyph = this.getGlyph(char, options.hdFont);
+        if (!glyph) return 0;
+
+        const drawSize = glyph.scale === 1 ? options.size / 2 : options.size;
+        const boldAdvance = options.bold ? glyph.boldLayerCount : 0;
+
+        return (glyph.advance + boldAdvance) * glyph.scale * drawSize;
     }
 
     private drawChar(ctx: CanvasRenderingContext2D, char: string, x: number, y: number, options: Required<TextOptions>): number {

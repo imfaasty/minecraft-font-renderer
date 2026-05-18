@@ -73,13 +73,16 @@ Both `&` and `§` prefixes are supported.
 Example:
 
 ```ts
-import { parseMinecraftText } from "minecraft-font-renderer";
+renderer.fillText(ctx, "&d&lHello &cWorld&a!", 50, 80, {
+  size: 8,
+  shadow: true,
+});
 
-parseMinecraftText("&d&lHello &cWorld&a!");
-parseMinecraftText("§d§lHello §cWorld§a!");
+renderer.fillText(ctx, "§d§lHello §cWorld§a!", 50, 80, {
+  size: 8,
+  shadow: true,
+});
 ```
-
-When using `renderer.fillText(...)`, parsing is handled automatically.
 
 ## HD Font
 
@@ -94,6 +97,25 @@ renderer.fillText(ctx, "&bHello World!", 50, 80, {
 ```
 
 `hdFont: true` uses `ascii_hd.png` for ASCII characters.
+
+## Text Alignment
+
+`fillText` supports `left`, `center`, and `right` alignment:
+
+```ts
+renderer.fillText(ctx, "&f&lHello World!", 900, 80, {
+  size: 8,
+  shadow: true,
+  align: "center",
+});
+
+renderer.fillText(ctx, "&eHello World!", 900, 80, {
+  size: 8,
+  shadow: true,
+  align: "right",
+});
+```
+Alignment is based on the rendered text `width`, including formatting such as bold and HD glyphs.
 
 ## Font Assets
 
@@ -128,6 +150,8 @@ If you change the font assets, regenerate the metrics with:
 ```console
 npm run gen:metrics
 ```
+
+This is only needed when changing or replacing the font assets.
 
 ## Leaderboard Example
 
@@ -164,4 +188,5 @@ This helps when rendering repeated text, leaderboards, and stat cards.
 Minecraft is a trademark of Mojang Studios/Microsoft. This project is not affiliated with or endorsed by Mojang Studios or Microsoft.
 
 ## License
+
 This project is licensed under the ISC License.
