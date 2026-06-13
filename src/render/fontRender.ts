@@ -14,7 +14,7 @@ type GlyphBitmap = { pixels: { x: number, y: number }[]; width: number; height: 
 type GlyphSource = { x: number; y: number; width: number; height: number; image: FontImage; scale: number; advance: number; shadowDistance: number; boldLayerCount: number };
 type CharacterPosition = { x: number; y: number };
 
-interface GlyphMetricsFile { ascii: GlyphMetrics; unicode: GlyphMetrics; }
+interface GlyphMetricsFile { ascii: GlyphMetrics; asciiHd: GlyphMetrics; unicode: GlyphMetrics; }
 
 export class FontRender {
     private images: Map<string, FontImage>;
@@ -318,7 +318,8 @@ export class FontRender {
         const scale = image.scale;
 
         const metrics = this.getMetrics();
-        const characterSize = metrics[usesAsciiAtlas ? "ascii" : "unicode"][glyphUnicode.toUpperCase()];
+        const metricsKey = usesAsciiAtlas ? hdFont ? "asciiHd" : "ascii" : "unicode";
+        const characterSize = metrics[metricsKey]?.[glyphUnicode.toUpperCase()];
 
         const trimLeft = characterSize?.trimLeft ?? 0;
         const visibleWidth = characterSize?.visibleWidth ?? 16;

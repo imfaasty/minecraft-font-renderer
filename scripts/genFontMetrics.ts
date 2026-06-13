@@ -10,6 +10,7 @@ type GlyphSize = {
 
 type Sizes = {
     ascii: Record<string, GlyphSize>;
+    asciiHd: Record<string, GlyphSize>;
     unicode: Record<string, GlyphSize>;
 }
 
@@ -73,8 +74,8 @@ function measureCell(ctx: CanvasRenderingContext2D, cellx: number, celly: number
     };
 }
 
-async function generateAsciiSizes(): Promise<Record<string, GlyphSize>> {
-    const { ctx, scale } = await loadImageData(join(assetsPath, "ascii.png"));
+async function generateAsciiSizes(fileName: string): Promise<Record<string, GlyphSize>> {
+    const { ctx, scale } = await loadImageData(join(assetsPath, fileName));
 
     const ascii: Record<string, GlyphSize> = {};
 
@@ -127,7 +128,8 @@ async function generateUnicodeSizes(): Promise<Record<string, GlyphSize>> {
 
 async function main() {
     const sizes: Sizes = {
-        ascii: await generateAsciiSizes(),
+        ascii: await generateAsciiSizes("ascii.png"),
+        asciiHd: await generateAsciiSizes("ascii_hd.png"),
         unicode: await generateUnicodeSizes()
     };
 
