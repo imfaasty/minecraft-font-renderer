@@ -6,7 +6,7 @@ import { asciiAtlasLayout } from "./asciiAtlasLayout.js";
 
 type GlyphMetrics = Record<string, { trimLeft?: number; visibleWidth?: number }>;
 type FontImage = { canvas: Canvas; ctx: CanvasRenderingContext2D; width: number; height: number; scale: number };
-type TextOptions = { color?: string; shadow?: boolean; shadowColor?: string; bold?: boolean; italic?: boolean; size?: number; hdFont?: boolean };
+export type TextOptions = { color?: string; shadow?: boolean; shadowColor?: string; bold?: boolean; italic?: boolean; size?: number; hdFont?: boolean };
 type TextAlign = "left" | "center" | "right";
 type FillTextOptions = Pick<TextOptions, "shadow" | "size" | "hdFont"> & { align?: TextAlign };
 type CharacterLayer = { x: number; y: number; color: string };
@@ -381,6 +381,11 @@ export class FontRender {
         }
 
         return map;
+    }
+
+    public getTextWidth(text: string, options: TextOptions = {}) {
+        const segments = parseMinecraftText(text);
+        return this.measureSegments(segments, options);
     }
 
     private hasAsciiGlyph(unicode: string) {
