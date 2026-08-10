@@ -153,16 +153,6 @@ npm run gen:metrics
 
 This is only needed when changing or replacing the font assets.
 
-## Leaderboard Example
-
-This repository also includes a Mush leaderboard example that fetches public leaderboard data and renders it as an image.
-
-```console
-npx tsx examples/mushLeaderboard.ts
-```
-
-The Mush example is only a usage demo. The renderer itself does not depend on the Mush API.
-
 ## Performance
 
 Glyphs are cached after first use. The renderer stores the visible pixels for each glyph, so repeated characters can be drawn without reading the font texture again.
