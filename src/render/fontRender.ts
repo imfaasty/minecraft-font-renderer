@@ -5,7 +5,7 @@ import { parseMinecraftText, type MinecraftTextSegment } from './minecraftPrefix
 import { asciiAtlasLayout } from "./asciiAtlasLayout.js";
 
 type GlyphMetrics = Record<string, { trimLeft?: number; visibleWidth?: number }>;
-type FontImage = { canvas: Canvas; ctx: CanvasRenderingContext2D; width: number; height: number; scale: number; isUpdscaled: boolean };
+type FontImage = { canvas: Canvas; ctx: CanvasRenderingContext2D; width: number; height: number; scale: number };
 type TextOptions = { color?: string; shadow?: boolean; shadowColor?: string; bold?: boolean; italic?: boolean; size?: number; hdFont?: boolean };
 type TextAlign = "left" | "center" | "right";
 type FillTextOptions = Pick<TextOptions, "shadow" | "size" | "hdFont"> & { align?: TextAlign };
@@ -51,7 +51,7 @@ export class FontRender {
             ctx.drawImage(img, 0, 0, targetWidth, targetHeight);
 
             this.images.set(file.replace("unicode_page_", "").replace(".png", ""), {
-                canvas, ctx, width: canvas.width, height: canvas.height, scale: canvas.width / 256, isUpdscaled: !file.includes("unicode_page_")
+                canvas, ctx, width: canvas.width, height: canvas.height, scale: canvas.width / 256
             });
         }
     }
@@ -127,7 +127,7 @@ export class FontRender {
         for (const char of text) {
             width += this.measureChar(char, textOptions);
         }
-        
+
         return width;
     }
 
@@ -160,25 +160,28 @@ export class FontRender {
         return x;
     }
 
+    private getCharRenderMetrics(glyph: GlyphBitmap, options: Required<TextOptions>) {
+        const drawSize = glyph.scale === 1 ? options.size / 2 : options.size;
+        const boldAdvance = options.bold ? glyph.boldLayerCount : 0;
+        const shadowOffset = glyph.shadowDistance * glyph.scale * drawSize;
+        const boldOffsetX = glyph.scale * drawSize;
+        const advance = (glyph.advance + boldAdvance) * glyph.scale * drawSize;
+
+        return { drawSize, shadowOffset, boldOffsetX, advance };
+    }
+
     private measureChar(char: string, options: Required<TextOptions>): number {
         const glyph = this.getGlyph(char, options.hdFont);
         if (!glyph) return 0;
 
-        const drawSize = glyph.scale === 1 ? options.size / 2 : options.size;
-        const boldAdvance = options.bold ? glyph.boldLayerCount : 0;
-
-        return (glyph.advance + boldAdvance) * glyph.scale * drawSize;
+        return this.getCharRenderMetrics(glyph, options).advance;
     }
 
     private drawChar(ctx: CanvasRenderingContext2D, char: string, x: number, y: number, options: Required<TextOptions>): number {
         const glyph = this.getGlyph(char, options.hdFont);
         if (!glyph) return 0;
 
-        const drawSize = glyph.scale === 1 ? options.size / 2 : options.size;
-
-        const shadowOffset = glyph.shadowDistance * glyph.scale * drawSize;
-        const boldOffsetX = glyph.scale * drawSize;
-        const boldAdvance = options.bold ? glyph.boldLayerCount : 0;
+        const { drawSize, shadowOffset, boldOffsetX, advance } = this.getCharRenderMetrics(glyph, options);
 
         const layers = this.getCharacterLayers(
             options,
@@ -200,7 +203,7 @@ export class FontRender {
             );
         }
 
-        return (glyph.advance + boldAdvance) * glyph.scale * drawSize;
+        return advance;
     }
 
     private drawGlyph(ctx: CanvasRenderingContext2D, glyph: GlyphBitmap, x: number, y: number, drawSize: number, color: string, options: { italic: boolean }) {
