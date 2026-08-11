@@ -98,6 +98,19 @@ renderer.fillText(ctx, "&bHello World!", 50, 80, {
 
 `hdFont: true` uses `ascii_hd.png` for ASCII characters.
 
+## Size
+
+For pixel-perfect rendering, use even `size` values. This applies to
+both `hdFont: true` and `hdFont: false` — the renderer's internal
+draw-size scaling divides `size` by 2 for the ASCII atlases in both
+modes, so odd or fractional sizes can produce slightly irregular
+pixel gaps within a character (visible mainly at larger sizes).
+
+```ts
+renderer.fillText(ctx, text, 50, 80, { size: 8 }); // recommended
+renderer.fillText(ctx, text, 50, 80, { size: 5 }); // may look uneven
+```
+
 ## Text Alignment
 
 `fillText` supports `left`, `center`, and `right` alignment:
