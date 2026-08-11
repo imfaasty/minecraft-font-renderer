@@ -68,19 +68,20 @@ export class FontRender {
         const italic = options.italic ?? false;
         const hdFont = options.hdFont ?? false;
 
-        let currentX = x;
+        let currentX = Math.round(x);
 
         const textOptions = { color, shadow, shadowColor, bold, italic, size, hdFont };
 
         for (const char of text) {
             const spacing = this.drawChar(ctx, char, currentX, y, textOptions);
-            currentX += spacing;
+            currentX += Math.round(spacing);
         }
 
-        return currentX - x;
+        return currentX - Math.round(x);
     }
 
     public fillText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: FillTextOptions = {}) {
+        ctx.imageSmoothingEnabled = false;
         const segments = parseMinecraftText(text);
 
         let currentX = this.getAlignedStartX(x, segments, options);
