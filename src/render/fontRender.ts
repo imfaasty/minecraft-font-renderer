@@ -6,25 +6,27 @@ import { asciiAtlasLayout } from "./asciiAtlasLayout.js";
 
 type GlyphMetrics = Record<string, { trimLeft?: number; visibleWidth?: number }>;
 type FontImage = { canvas: Canvas; ctx: CanvasRenderingContext2D; width: number; height: number; scale: number };
-export type TextOptions = { color?: string; shadow?: boolean; shadowColor?: string; bold?: boolean; italic?: boolean; size?: number; hdFont?: boolean };
 type TextAlign = "left" | "center" | "right";
 type FillTextOptions = Pick<TextOptions, "shadow" | "size" | "hdFont"> & { align?: TextAlign };
 type CharacterLayer = { x: number; y: number; color: string };
 type GlyphBitmap = { pixels: { x: number, y: number }[]; width: number; height: number; scale: number; advance: number; shadowDistance: number; boldLayerCount: number };
 type GlyphSource = { x: number; y: number; width: number; height: number; image: FontImage; scale: number; advance: number; shadowDistance: number; boldLayerCount: number };
 type CharacterPosition = { x: number; y: number };
+export type TextOptions = { color?: string; shadow?: boolean; shadowColor?: string; bold?: boolean; italic?: boolean; size?: number; hdFont?: boolean };
 
 interface GlyphMetricsFile { ascii: GlyphMetrics; asciiHd: GlyphMetrics; unicode: GlyphMetrics; }
 
 export class FontRender {
     private images: Map<string, FontImage>;
     private glyphCache: Map<string, GlyphBitmap>;
+    private bitmapCache: Map<string, Canvas>;
     private asciiPositions: Map<string, CharacterPosition>;
     private glyphMetrics: GlyphMetricsFile | null;
 
     public constructor() {
         this.images = new Map();
         this.glyphCache = new Map();
+        this.bitmapCache = new Map();
         this.asciiPositions = this.createAsciiPositionMap();
         this.glyphMetrics = null;
     }
@@ -32,6 +34,7 @@ export class FontRender {
     public async loadImages(fontPath: string) {
         this.images.clear();
         this.glyphCache.clear();
+        this.bitmapCache.clear();
 
         await this.loadMetrics(fontPath);
 
@@ -171,46 +174,57 @@ export class FontRender {
     }
 
     private measureChar(char: string, options: Required<TextOptions>): number {
-        const glyph = this.getGlyph(char, options.hdFont);
+        const glyphKey = this.getGlyphKey(char, options.hdFont);
+        const glyph = this.getGlyph(char, options.hdFont, glyphKey);
         if (!glyph) return 0;
 
         return this.getCharRenderMetrics(glyph, options).advance;
     }
 
     private drawChar(ctx: CanvasRenderingContext2D, char: string, x: number, y: number, options: Required<TextOptions>): number {
-        const glyph = this.getGlyph(char, options.hdFont);
+        const glyphKey = this.getGlyphKey(char, options.hdFont);
+        const glyph = this.getGlyph(char, options.hdFont, glyphKey);
         if (!glyph) return 0;
 
         const { drawSize, shadowOffset, boldOffsetX, advance } = this.getCharRenderMetrics(glyph, options);
 
-        const layers = this.getCharacterLayers(
-            options,
-            shadowOffset,
-            shadowOffset,
-            boldOffsetX,
-            glyph.boldLayerCount
-        );
+        const baseX = Math.round(x);
+        const baseY = Math.round(y);
+
+        const layers = this.getCharacterLayers(options, shadowOffset, shadowOffset, boldOffsetX, glyph.boldLayerCount);
 
         for (const layer of layers) {
             this.drawGlyph(
-                ctx,
-                glyph,
-                x + layer.x,
-                y + layer.y,
-                drawSize,
-                layer.color,
-                { italic: options.italic }
+                ctx, glyphKey, glyph,
+                baseX + Math.round(layer.x),
+                baseY + Math.round(layer.y),
+                drawSize, layer.color, { italic: options.italic }
             );
         }
 
         return advance;
     }
 
-    private drawGlyph(ctx: CanvasRenderingContext2D, glyph: GlyphBitmap, x: number, y: number, drawSize: number, color: string, options: { italic: boolean }) {
+    private getGlyphKey(char: string, hdFont: boolean): string {
+        const unicode = this.toUnicode(char);
+        return `${hdFont ? "hd" : "normal"}:${unicode}`;
+    }
+
+    private drawGlyph(ctx: CanvasRenderingContext2D, glyphKey: string, glyph: GlyphBitmap, x: number, y: number, drawSize: number, color: string, options: { italic: boolean }) {
+        if (options.italic) {
+            this.drawGlyphVector(ctx, glyph, x, y, drawSize, color);
+            return;
+        }
+
+        const bitmap = this.getGlyphBitmap(glyphKey, glyph, drawSize, color);
+        ctx.drawImage(bitmap, x, y);
+    }
+
+    private drawGlyphVector(ctx: CanvasRenderingContext2D, glyph: GlyphBitmap, x: number, y: number, drawSize: number, color: string) {
         ctx.beginPath();
 
         for (const pixel of glyph.pixels) {
-            const italicOffset = options.italic ? this.getItalicOffset(pixel.y, glyph.scale, drawSize) : 0;
+            const italicOffset = this.getItalicOffset(pixel.y, glyph.scale, drawSize);
 
             this.addPixelRect(
                 ctx,
@@ -265,11 +279,33 @@ export class FontRender {
         return layers;
     }
 
-    private getGlyph(char: string, hdFont: boolean): GlyphBitmap | null {
-        const unicode = this.toUnicode(char);
-        const cacheKey = `${hdFont ? "hd" : "normal"}:${unicode}`;
+    private getGlyphBitmap(glyphKey: string, glyph: GlyphBitmap, drawSize: number, color: string): Canvas {
+        const key = `${glyphKey}:${drawSize}:${color}`;
+        const cached = this.bitmapCache.get(key);
+        if (cached) return cached;
 
-        const cached = this.glyphCache.get(cacheKey);
+        const w = Math.ceil(glyph.width * drawSize) + 1;
+        const h = Math.ceil(glyph.height * drawSize) + 1;
+        const canvas = new Canvas(w, h);
+        const ctx = canvas.getContext('2d');
+        ctx.imageSmoothingEnabled = false;
+        ctx.fillStyle = color;
+
+        for (const pixel of glyph.pixels) {
+            ctx.fillRect(
+                Math.round(pixel.x * drawSize),
+                Math.round(pixel.y * drawSize),
+                Math.ceil(drawSize),
+                Math.ceil(drawSize)
+            );
+        }
+
+        this.bitmapCache.set(key, canvas);
+        return canvas;
+    }
+
+    private getGlyph(char: string, hdFont: boolean, glyphKey: string): GlyphBitmap | null {
+        const cached = this.glyphCache.get(glyphKey);
         if (cached) return cached;
 
         const source = this.resolveGlyphSource(char, hdFont);
@@ -301,7 +337,7 @@ export class FontRender {
             boldLayerCount: source.boldLayerCount
         };
 
-        this.glyphCache.set(cacheKey, glyph);
+        this.glyphCache.set(glyphKey, glyph);
         return glyph;
     }
 
