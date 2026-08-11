@@ -81,6 +81,10 @@ export class FontRender {
     }
 
     public fillText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: FillTextOptions = {}) {
+        if (options.size !== undefined && options.size % 2 !== 0) {
+            console.warn("[minecraft-font-renderer] An odd size can result in irregular pixel spacing. Use an even value.");
+        }
+
         ctx.imageSmoothingEnabled = false;
         const segments = parseMinecraftText(text);
 
