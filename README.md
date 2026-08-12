@@ -130,6 +130,32 @@ renderer.fillText(ctx, "&eHello World!", 900, 80, {
 ```
 Alignment is based on the rendered text `width`, including formatting such as bold and HD glyphs.
 
+## Multi-line Text
+
+`fillText` and `getTextSize` support `\n` to render or measure multiple lines. Color and formatting codes persist across line breaks, just like in Minecraft — you don't need to repeat `&c` on every line.
+
+```ts
+renderer.fillText(ctx, "&cLine one\nstill red on line two", 50, 80, {
+  size: 8,
+  shadow: true,
+});
+```
+
+`align` applies to each line individually, centering or right-aligning it relative to the same `x` position.
+
+## Measuring Text
+
+Use `getTextSize` to measure the rendered width and height of a text string without drawing it — useful for custom layout, centering elements around text, or building UI that reacts to text size. Multi-line text (`\n`) is supported and returns the width of the widest line along with the total block height.
+
+```ts
+const { width, height } = renderer.getTextSize("&d&lHello World!", {
+  size: 8,
+  hdFont: false,
+});
+```
+
+Formatting codes (`&c`, `&l`, etc.) inside the text are parsed the same way as in `fillText` and determine bold/italic sizing — the `options` object only controls `size`, `hdFont`, and `shadow`.
+
 ## Font Assets
 
 Before rendering, load the included font textures:
