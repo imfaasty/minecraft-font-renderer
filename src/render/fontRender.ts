@@ -1,7 +1,7 @@
 import { Canvas, loadImage, type CanvasRenderingContext2D } from 'skia-canvas';
 import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
-import { parseMinecraftText, type MinecraftTextSegment } from './minecraftPrefix.js';
+import { parseMinecraftText, parseMinecraftTextLines, type MinecraftTextSegment } from './minecraftPrefix.js';
 import { asciiAtlasLayout } from "./asciiAtlasLayout.js";
 
 type GlyphMetrics = Record<string, { trimLeft?: number; visibleWidth?: number }>;
@@ -15,6 +15,9 @@ type CharacterPosition = { x: number; y: number };
 export type TextOptions = { color?: string; shadow?: boolean; shadowColor?: string; bold?: boolean; italic?: boolean; size?: number; hdFont?: boolean };
 
 interface GlyphMetricsFile { ascii: GlyphMetrics; asciiHd: GlyphMetrics; unicode: GlyphMetrics; }
+
+const GLYPH_CELL_SIZE = 16;
+const LINE_SPACING = 2;
 
 export class FontRender {
     private images: Map<string, FontImage>;
@@ -86,6 +89,11 @@ export class FontRender {
         }
 
         ctx.imageSmoothingEnabled = false;
+
+        if (text.includes("\n")) {
+            return this.fillMultilineText(ctx, text, x, y, options);
+        }
+
         const segments = parseMinecraftText(text);
 
         let currentX = this.getAlignedStartX(x, segments, options);
@@ -208,6 +216,39 @@ export class FontRender {
         }
 
         return advance;
+    }
+
+    private fillMultilineText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: FillTextOptions): number {
+        const lines = parseMinecraftTextLines(text);
+        const lineHeight = this.getLineHeight(options);
+
+        let maxWidth = 0;
+
+        lines.forEach((segments, i) => {
+            const lineY = y + i * lineHeight;
+            let currentX = this.getAlignedStartX(x, segments, options);
+            const startX = currentX;
+
+            for (const segment of segments) {
+                const width = this.drawText(ctx, segment.text, currentX, lineY, {
+                    ...options,
+                    color: segment.color,
+                    shadowColor: segment.shadowColor,
+                    bold: segment.bold,
+                    italic: segment.italic,
+                });
+                currentX += width;
+            }
+
+            maxWidth = Math.max(maxWidth, currentX - startX);
+        });
+
+        return maxWidth;
+    }
+    private getLineHeight(options: FillTextOptions): number {
+        const drawSize = this.getDrawSize(options);
+
+        return (GLYPH_CELL_SIZE + LINE_SPACING) * drawSize;
     }
 
     private getGlyphKey(char: string, hdFont: boolean): string {
@@ -366,13 +407,13 @@ export class FontRender {
         const characterSize = metrics[metricsKey]?.[glyphUnicode.toUpperCase()];
 
         const trimLeft = characterSize?.trimLeft ?? 0;
-        const visibleWidth = characterSize?.visibleWidth ?? 16;
+        const visibleWidth = characterSize?.visibleWidth ?? GLYPH_CELL_SIZE;
 
         return {
-            x: (trimLeft + x * 16) * scale,
-            y: y * 16 * scale,
+            x: (trimLeft + x * GLYPH_CELL_SIZE) * scale,
+            y: y * GLYPH_CELL_SIZE * scale,
             width: visibleWidth * scale,
-            height: 16 * scale,
+            height: GLYPH_CELL_SIZE * scale,
             image,
             scale,
             advance: this.getGlyphAdvance(char, visibleWidth),
@@ -424,9 +465,36 @@ export class FontRender {
         return map;
     }
 
-    public getTextWidth(text: string, options: TextOptions = {}) {
+    public getTextSize(text: string, options: FillTextOptions = {}): { width: number; height: number } {
+        if (text.includes("\n")) {
+            return this.getMultilineTextSize(text, options);
+        }
+
         const segments = parseMinecraftText(text);
-        return this.measureSegments(segments, options);
+        const width = this.measureSegments(segments, options);
+        const height = GLYPH_CELL_SIZE * this.getDrawSize(options);
+
+        return { width, height };
+    }
+
+    private getMultilineTextSize(text: string, options: FillTextOptions): { width: number; height: number } {
+        const lines = parseMinecraftTextLines(text);
+        const drawSize = this.getDrawSize(options);
+
+        let maxWidth = 0;
+        for (const segments of lines) {
+            maxWidth = Math.max(maxWidth, this.measureSegments(segments, options));
+        }
+
+        const glyphHeight = GLYPH_CELL_SIZE * drawSize;
+        const height = glyphHeight + (lines.length - 1) * this.getLineHeight(options);
+
+        return { width: maxWidth, height };
+    }
+
+    private getDrawSize(options: Pick<TextOptions, "size">): number {
+        const size = options.size ?? 2;
+        return size / 2;
     }
 
     private hasAsciiGlyph(unicode: string) {
