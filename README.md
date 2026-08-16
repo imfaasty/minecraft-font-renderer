@@ -1,5 +1,8 @@
 # Minecraft Font Renderer
 
+[![npm version](https://img.shields.io/npm/v/minecraft-font-renderer.svg)](https://www.npmjs.com/package/minecraft-font-renderer)
+[![license](https://img.shields.io/npm/l/minecraft-font-renderer.svg)](https://github.com/imfaasty/minecraft-font-renderer/blob/main/LICENSE)
+
 Minecraft-style text renderer for Node.js using `skia-canvas`.
 
 It supports Minecraft color codes, shadows, bold, italic, Unicode glyphs, HD ASCII font textures, and cached glyph rendering.
