@@ -1,13 +1,5 @@
-export type MinecraftStyle = {
-    color: string;
-    shadowColor: string;
-    bold: boolean;
-    italic: boolean;
-};
-
-export type MinecraftText = MinecraftStyle & {
-    text: string;
-};
+export type MinecraftStyle = { color: string; shadowColor: string; bold: boolean; italic: boolean; underline: boolean; strikethrough: boolean };
+export type MinecraftText = MinecraftStyle & { text: string };
 
 export const minecraftColors = [
     { code: "0", hex: "#000000" },

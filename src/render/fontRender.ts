@@ -12,12 +12,21 @@ type CharacterLayer = { x: number; y: number; color: string };
 type GlyphBitmap = { pixels: { x: number, y: number }[]; width: number; height: number; scale: number; advance: number; shadowDistance: number; boldLayerCount: number };
 type GlyphSource = { x: number; y: number; width: number; height: number; image: FontImage; scale: number; advance: number; shadowDistance: number; boldLayerCount: number };
 type CharacterPosition = { x: number; y: number };
-export type TextOptions = { color?: string; shadow?: boolean; shadowColor?: string; bold?: boolean; italic?: boolean; size?: number; hdFont?: boolean };
+export type TextOptions = { color?: string; shadow?: boolean; shadowColor?: string; bold?: boolean; italic?: boolean; size?: number; hdFont?: boolean; underline?: boolean; strikethrough?: boolean };
 
 interface GlyphMetricsFile { ascii: GlyphMetrics; asciiHd: GlyphMetrics; unicode: GlyphMetrics; }
 
 const GLYPH_CELL_SIZE = 16;
 const LINE_SPACING = 2;
+
+const UNDERLINE_ROW = 16;
+const STRIKETHROUGH_ROW = 6;
+const LINE_THICKNESS = 2;
+const DECORATION_PADDING = 2;
+
+const ASCII_SHADOW_DISTANCE = 2;
+const UNICODE_SHADOW_DISTANCE = 1;
+const MAX_SHADOW_DISTANCE = Math.max(ASCII_SHADOW_DISTANCE, UNICODE_SHADOW_DISTANCE);
 
 export class FontRender {
     private images: Map<string, FontImage>;
@@ -64,21 +73,26 @@ export class FontRender {
 
     private drawText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: TextOptions = {}) {
         const color = options.color ?? "#ffffff";
-        const shadow = options.shadow ?? false;
+        const shadow = options.shadow ?? true;
         const shadowColor = options.shadowColor ?? "rgba(0, 0, 0, 0.5)";
         const bold = options.bold ?? false;
+        const underline = options.underline ?? false;
+        const strikethrough = options.strikethrough ?? false;
         const size = options.size ?? 2;
         const italic = options.italic ?? false;
         const hdFont = options.hdFont ?? false;
 
+        const chars = Array.from(text);
         let currentX = Math.round(x);
 
-        const textOptions = { color, shadow, shadowColor, bold, italic, size, hdFont };
+        const textOptions = { color, shadow, shadowColor, bold, underline, strikethrough, italic, size, hdFont };
 
-        for (const char of text) {
-            const spacing = this.drawChar(ctx, char, currentX, y, textOptions);
+        chars.forEach((char, index) => {
+            const isFirst = index === 0;
+            const isLast = index === chars.length - 1;
+            const spacing = this.drawChar(ctx, char, currentX, y, textOptions, isFirst, isLast)
             currentX += Math.round(spacing);
-        }
+        })
 
         return currentX - Math.round(x);
     }
@@ -106,6 +120,8 @@ export class FontRender {
                 shadowColor: segment.shadowColor,
                 bold: segment.bold,
                 italic: segment.italic,
+                underline: segment.underline,
+                strikethrough: segment.strikethrough,
             });
             currentX += width;
         }
@@ -130,14 +146,16 @@ export class FontRender {
 
     private measureText(text: string, options: TextOptions = {}): number {
         const color = options.color ?? "#ffffff";
-        const shadow = options.shadow ?? false;
+        const shadow = options.shadow ?? true;
         const shadowColor = options.shadowColor ?? "rgba(0, 0, 0, 0.5)";
         const bold = options.bold ?? false;
+        const underline = options.underline ?? false;
+        const strikethrough = options.strikethrough ?? false;
         const size = options.size ?? 2;
         const italic = options.italic ?? false;
         const hdFont = options.hdFont ?? false;
 
-        const textOptions = { color, shadow, shadowColor, bold, italic, size, hdFont };
+        const textOptions = { color, shadow, shadowColor, bold, underline, strikethrough, italic, size, hdFont };
         let width = 0;
 
         for (const char of text) {
@@ -157,6 +175,8 @@ export class FontRender {
                 shadowColor: segment.shadowColor,
                 bold: segment.bold,
                 italic: segment.italic,
+                underline: segment.underline,
+                strikethrough: segment.strikethrough,
             });
         }
 
@@ -194,66 +214,134 @@ export class FontRender {
         return this.getCharRenderMetrics(glyph, options).advance;
     }
 
-    private drawChar(ctx: CanvasRenderingContext2D, char: string, x: number, y: number, options: Required<TextOptions>): number {
+    private drawChar(ctx: CanvasRenderingContext2D, char: string, x: number, y: number, options: Required<TextOptions>, isFirst: boolean, isLast: boolean): number {
         const glyphKey = this.getGlyphKey(char, options.hdFont);
         const glyph = this.getGlyph(char, options.hdFont, glyphKey);
         if (!glyph) return 0;
 
         const { drawSize, shadowOffset, boldOffsetX, advance } = this.getCharRenderMetrics(glyph, options);
-
         const baseX = Math.round(x);
         const baseY = Math.round(y);
-
         const layers = this.getCharacterLayers(options, shadowOffset, shadowOffset, boldOffsetX, glyph.boldLayerCount);
 
+        if (options.strikethrough && options.shadow) {
+            this.drawTextDecorations(ctx, { ...options, underline: false }, [{ x: shadowOffset, y: shadowOffset, color: options.shadowColor }], baseX, baseY, drawSize, advance, isFirst, isLast);
+        }
+
         for (const layer of layers) {
-            this.drawGlyph(
-                ctx, glyphKey, glyph,
-                baseX + Math.round(layer.x),
-                baseY + Math.round(layer.y),
-                drawSize, layer.color, { italic: options.italic }
-            );
+            this.drawGlyph(ctx, glyphKey, glyph, baseX + Math.round(layer.x), baseY + Math.round(layer.y), drawSize, layer.color, { italic: options.italic });
+        }
+
+        if (options.strikethrough) {
+            this.drawTextDecorations(ctx, { ...options, underline: false }, [{ x: 0, y: 0, color: options.color }], baseX, baseY, drawSize, advance, isFirst, isLast);
+        }
+
+        if (options.underline) {
+            const decorationLayers = this.getCharacterLayers(options, shadowOffset, shadowOffset, boldOffsetX, glyph.boldLayerCount);
+            this.drawTextDecorations(ctx, { ...options, strikethrough: false }, decorationLayers, baseX, baseY, drawSize, advance, isFirst, isLast);
         }
 
         return advance;
     }
 
+    private drawTextDecorations(ctx: CanvasRenderingContext2D, options: Required<TextOptions>, layers: CharacterLayer[], baseX: number, baseY: number, drawSize: number, advance: number, isFirst: boolean, isLast: boolean) {
+        const thickness = Math.max(1, Math.round(LINE_THICKNESS * drawSize));
+
+        const padding = Math.round(DECORATION_PADDING * drawSize);
+        const startExtra = isFirst ? padding : 0;
+        const endExtra = isLast ? padding : 0;
+        const underlineWidth = Math.max(1, Math.round(advance) + startExtra + endExtra);
+        const strikethroughWidth = Math.max(1, Math.round(advance));
+
+        for (const layer of layers) {
+            const baseLayerX = baseX + Math.round(layer.x);
+            const layerY = baseY + Math.round(layer.y);
+
+            if (options.underline) {
+                this.drawDecorationLine(ctx, baseLayerX - startExtra, layerY, underlineWidth, thickness, drawSize, UNDERLINE_ROW, layer.color);
+            }
+            if (options.strikethrough) {
+                this.drawDecorationLine(ctx, baseLayerX, layerY, strikethroughWidth, thickness, drawSize, STRIKETHROUGH_ROW, layer.color);
+            }
+        }
+    }
+
+    private drawDecorationLine(ctx: CanvasRenderingContext2D, x: number, y: number, width: number, thickness: number, drawSize: number, row: number, color: string) {
+        const lineY = y + Math.round(row * drawSize);
+        ctx.fillStyle = color;
+        ctx.fillRect(x, lineY, width, thickness);
+    }
+
+    private getSegmentsDecorationHeight(segments: MinecraftTextSegment[], options: FillTextOptions): number {
+        const drawSize = this.getDrawSize(options);
+        const thickness = Math.max(1, Math.round(LINE_THICKNESS * drawSize));
+        const shadow = options.shadow ?? true;
+        const shadowOffset = shadow ? MAX_SHADOW_DISTANCE * drawSize : 0;
+
+        let height = GLYPH_CELL_SIZE * drawSize;
+
+        for (const segment of segments) {
+            if (segment.underline) {
+                height = Math.max(
+                    height,
+                    UNDERLINE_ROW * drawSize + thickness,
+                    UNDERLINE_ROW * drawSize + shadowOffset + thickness
+                );
+            }
+
+            if (segment.strikethrough) {
+                height = Math.max(
+                    height,
+                    STRIKETHROUGH_ROW * drawSize + thickness,
+                    STRIKETHROUGH_ROW * drawSize + shadowOffset + thickness
+                );
+            }
+        }
+
+        return height;
+    }
+
     private fillMultilineText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: FillTextOptions): number {
         const lines = parseMinecraftTextLines(text);
-        const lineHeight = this.getLineHeight(options);
 
         let maxWidth = 0;
+        let currentY = y;
 
-        lines.forEach((segments, i) => {
-            const lineY = y + i * lineHeight;
+        for (const segments of lines) {
             let currentX = this.getAlignedStartX(x, segments, options);
             const startX = currentX;
 
             for (const segment of segments) {
-                const width = this.drawText(ctx, segment.text, currentX, lineY, {
+                const width = this.drawText(ctx, segment.text, currentX, currentY, {
                     ...options,
                     color: segment.color,
                     shadowColor: segment.shadowColor,
                     bold: segment.bold,
                     italic: segment.italic,
+                    underline: segment.underline,
+                    strikethrough: segment.strikethrough,
                 });
+
                 currentX += width;
             }
 
             maxWidth = Math.max(maxWidth, currentX - startX);
-        });
+            currentY += this.getLineAdvanceHeight(segments, options);
+        }
 
         return maxWidth;
-    }
-    private getLineHeight(options: FillTextOptions): number {
-        const drawSize = this.getDrawSize(options);
-
-        return (GLYPH_CELL_SIZE + LINE_SPACING) * drawSize;
     }
 
     private getGlyphKey(char: string, hdFont: boolean): string {
         const unicode = this.toUnicode(char);
         return `${hdFont ? "hd" : "normal"}:${unicode}`;
+    }
+
+    private getLineAdvanceHeight(segments: MinecraftTextSegment[], options: FillTextOptions): number {
+        const decorationHeight = this.getSegmentsDecorationHeight(segments, options);
+        const drawSize = this.getDrawSize(options);
+
+        return decorationHeight + LINE_SPACING * drawSize;
     }
 
     private drawGlyph(ctx: CanvasRenderingContext2D, glyphKey: string, glyph: GlyphBitmap, x: number, y: number, drawSize: number, color: string, options: { italic: boolean }) {
@@ -472,22 +560,26 @@ export class FontRender {
 
         const segments = parseMinecraftText(text);
         const width = this.measureSegments(segments, options);
-        const height = GLYPH_CELL_SIZE * this.getDrawSize(options);
+        const height = this.getSegmentsDecorationHeight(segments, options);
 
         return { width, height };
     }
 
     private getMultilineTextSize(text: string, options: FillTextOptions): { width: number; height: number } {
         const lines = parseMinecraftTextLines(text);
-        const drawSize = this.getDrawSize(options);
 
         let maxWidth = 0;
-        for (const segments of lines) {
-            maxWidth = Math.max(maxWidth, this.measureSegments(segments, options));
-        }
+        let height = 0;
 
-        const glyphHeight = GLYPH_CELL_SIZE * drawSize;
-        const height = glyphHeight + (lines.length - 1) * this.getLineHeight(options);
+        lines.forEach((segments, index) => {
+            maxWidth = Math.max(maxWidth, this.measureSegments(segments, options));
+
+            if (index === lines.length - 1) {
+                height += this.getSegmentsDecorationHeight(segments, options);
+            } else {
+                height += this.getLineAdvanceHeight(segments, options);
+            }
+        });
 
         return { width: maxWidth, height };
     }
@@ -512,7 +604,7 @@ export class FontRender {
     }
 
     private getShadowDistance(usesAsciiAtlas: boolean) {
-        return usesAsciiAtlas ? 2 : 1;
+        return usesAsciiAtlas ? ASCII_SHADOW_DISTANCE : UNICODE_SHADOW_DISTANCE;
     }
 
     private getBoldLayerCount(usesAsciiAtlas: boolean) {

@@ -35,6 +35,8 @@ function parseMinecraftTextInternal(text: string, initialStyle: Partial<Minecraf
             }
             if (code === "l") { flush(); state = { ...state, bold: true }; i++; continue; }
             if (code === "o") { flush(); state = { ...state, italic: true }; i++; continue; }
+            if (code === "n") { flush(); state = { ...state, underline: true }; i++; continue; }
+            if (code === "m") { flush(); state = { ...state, strikethrough: true }; i++; continue; }
             if (code === "r") { flush(); state = resetStyle; i++; continue; }
         }
 
@@ -75,5 +77,7 @@ function createStyle(style: Partial<MinecraftStyle> = {}): MinecraftStyle {
         shadowColor: style.shadowColor ?? getMinecraftShadowColor(resolvedColor),
         bold: style.bold ?? false,
         italic: style.italic ?? false,
+        underline: style.underline ?? false,
+        strikethrough: style.strikethrough ?? false
     };
 }
