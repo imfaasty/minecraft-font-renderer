@@ -3,7 +3,7 @@ import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { parseMinecraftText, parseMinecraftTextLines, type MinecraftTextSegment } from './minecraftPrefix.js';
 import { asciiAtlasLayout } from "./asciiAtlasLayout.js";
-import { validateText, validateFillTextOptions, warnOddSize } from "../validation.js";
+import { validateText, validateFillTextOptions, warnOddSize, validateCoordinate } from "../validation.js";
 import type { TextOptions, FillTextOptions } from "../types.js";
 
 type GlyphMetrics = Record<string, { trimLeft?: number; visibleWidth?: number }>;
@@ -98,6 +98,8 @@ export class FontRender {
 
     public fillText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: FillTextOptions = {}) {
         validateText(text, "fillText");
+        validateCoordinate(x, "x", "fillText");
+        validateCoordinate(y, "y", "fillText");
         validateFillTextOptions(options, "fillText");
         warnOddSize(options.size, "fillText");
 

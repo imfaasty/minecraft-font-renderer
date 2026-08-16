@@ -14,9 +14,16 @@ export function validateText(text: unknown, method: string): asserts text is str
     }
 }
 
+export function validateCoordinate(value: unknown, paramName: string, method: string): asserts value is number {
+    if (typeof value !== "number" || !Number.isFinite(value)) {
+        throw new TypeError(`${LIBRARY_PREFIX} ${method}: expected ${paramName} to be a finite number, received ${typeof value}`);
+    }
+}
+
 export function validateFillTextOptions(options: unknown, method: string): asserts options is FillTextOptions {
-    if (typeof options !== "object" || options === null) {
-        throw new TypeError(`${LIBRARY_PREFIX} ${method}: expected options to be an object, received ${typeof options}`);
+    if (typeof options !== "object" || options === null || Array.isArray(options)) {
+        const received = Array.isArray(options) ? "array" : typeof options;
+        throw new TypeError(`${LIBRARY_PREFIX} ${method}: expected options to be an object, received ${received}`);
     }
 
     const opts = options as Record<string, unknown>;
