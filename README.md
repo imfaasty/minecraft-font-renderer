@@ -50,14 +50,7 @@ const buffer = await canvas.toBuffer("png");
 await writeFile("basic.png", buffer);
 ```
 
-## Run the Example
-
-Run the local example after cloning this repository:
-
-```console
-npm install
-npx tsx examples/basic.ts
-```
+`shadow` defaults to `true` — pass `shadow: false` if you don't want the drop shadow.
 
 ## Formatting Codes
 
@@ -68,21 +61,27 @@ Both `&` and `§` prefixes are supported.
 | `&0` - `&f` | Minecraft colors |
 | `&l` | Bold |
 | `&o` | Italic |
+| `&n` | Underline |
+| `&m` | Strikethrough |
 | `&r` | Reset formatting |
 
 Example:
 
 ```ts
-renderer.fillText(ctx, "&d&lHello &cWorld&a!", 50, 80, {
+renderer.fillText(ctx, "&b&lHello &9&lWorld&d!", 50, 80, {
   size: 8,
-  shadow: true,
+});
+
+renderer.fillText(ctx, "&n&cUnderlined&r &mStrikethrough", 50, 120, {
+  size: 8,
 });
 
 renderer.fillText(ctx, "§d§lHello §cWorld§a!", 50, 80, {
   size: 8,
-  shadow: true,
 });
 ```
+
+Underline and strikethrough persist across the rest of the string until `&r`, the same as color and bold. Underline extends slightly past the first and last character of the styled run, matching how Minecraft draws it; strikethrough does not.
 
 ## HD Font
 
@@ -90,7 +89,6 @@ The included font assets provide `ascii_hd.png`. Enable HD ASCII glyphs with:
 
 ```ts
 renderer.fillText(ctx, "&bHello World!", 50, 80, {
-  shadow: true,
   size: 8,
   hdFont: true,
 });
@@ -118,30 +116,16 @@ renderer.fillText(ctx, text, 50, 80, { size: 5 }); // may look uneven
 ```ts
 renderer.fillText(ctx, "&f&lHello World!", 900, 80, {
   size: 8,
-  shadow: true,
   align: "center",
 });
 
 renderer.fillText(ctx, "&eHello World!", 900, 80, {
   size: 8,
-  shadow: true,
   align: "right",
 });
 ```
+
 Alignment is based on the rendered text `width`, including formatting such as bold and HD glyphs.
-
-## Multi-line Text
-
-`fillText` and `getTextSize` support `\n` to render or measure multiple lines. Color and formatting codes persist across line breaks, just like in Minecraft — you don't need to repeat `&c` on every line.
-
-```ts
-renderer.fillText(ctx, "&cLine one\nstill red on line two", 50, 80, {
-  size: 8,
-  shadow: true,
-});
-```
-
-`align` applies to each line individually, centering or right-aligning it relative to the same `x` position.
 
 ## Measuring Text
 
@@ -150,11 +134,22 @@ Use `getTextSize` to measure the rendered width and height of a text string with
 ```ts
 const { width, height } = renderer.getTextSize("&d&lHello World!", {
   size: 8,
-  hdFont: false,
 });
 ```
 
-Formatting codes (`&c`, `&l`, etc.) inside the text are parsed the same way as in `fillText` and determine bold/italic sizing — the `options` object only controls `size`, `hdFont`, and `shadow`.
+Formatting codes (`&c`, `&l`, `&n`, `&m`, etc.) inside the text are parsed the same way as in `fillText` and determine bold/italic sizing and the height reserved for underline/strikethrough — the `options` object only controls `size`, `hdFont`, and `shadow`.
+
+## Multi-line Text
+
+`fillText` and `getTextSize` support `\n` to render or measure multiple lines. Color and formatting codes persist across line breaks, just like in Minecraft — you don't need to repeat `&c` on every line.
+
+```ts
+renderer.fillText(ctx, "&cLine one\nstill red on line two", 50, 80, {
+  size: 8,
+});
+```
+
+`align` applies to each line individually, centering or right-aligning it relative to the same `x` position.
 
 ## Font Assets
 
