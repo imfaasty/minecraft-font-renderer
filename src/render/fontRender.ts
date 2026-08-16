@@ -3,16 +3,15 @@ import { readFile, readdir } from "node:fs/promises";
 import { join } from "node:path";
 import { parseMinecraftText, parseMinecraftTextLines, type MinecraftTextSegment } from './minecraftPrefix.js';
 import { asciiAtlasLayout } from "./asciiAtlasLayout.js";
+import { validateText, validateFillTextOptions, warnOddSize } from "../validation.js";
+import type { TextOptions, FillTextOptions } from "../types.js";
 
 type GlyphMetrics = Record<string, { trimLeft?: number; visibleWidth?: number }>;
 type FontImage = { canvas: Canvas; ctx: CanvasRenderingContext2D; width: number; height: number; scale: number };
-type TextAlign = "left" | "center" | "right";
-type FillTextOptions = Pick<TextOptions, "shadow" | "size" | "hdFont"> & { align?: TextAlign };
 type CharacterLayer = { x: number; y: number; color: string };
 type GlyphBitmap = { pixels: { x: number, y: number }[]; width: number; height: number; scale: number; advance: number; shadowDistance: number; boldLayerCount: number };
 type GlyphSource = { x: number; y: number; width: number; height: number; image: FontImage; scale: number; advance: number; shadowDistance: number; boldLayerCount: number };
 type CharacterPosition = { x: number; y: number };
-export type TextOptions = { color?: string; shadow?: boolean; shadowColor?: string; bold?: boolean; italic?: boolean; size?: number; hdFont?: boolean; underline?: boolean; strikethrough?: boolean };
 
 interface GlyphMetricsFile { ascii: GlyphMetrics; asciiHd: GlyphMetrics; unicode: GlyphMetrics; }
 
@@ -98,9 +97,9 @@ export class FontRender {
     }
 
     public fillText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, options: FillTextOptions = {}) {
-        if (options.size !== undefined && options.size % 2 !== 0) {
-            console.warn("[minecraft-font-renderer] An odd size can result in irregular pixel spacing. Use an even value.");
-        }
+        validateText(text, "fillText");
+        validateFillTextOptions(options, "fillText");
+        warnOddSize(options.size, "fillText");
 
         ctx.imageSmoothingEnabled = false;
 
@@ -554,6 +553,9 @@ export class FontRender {
     }
 
     public getTextSize(text: string, options: FillTextOptions = {}): { width: number; height: number } {
+        validateText(text, "getTextSize");
+        validateFillTextOptions(options, "getTextSize");
+
         if (text.includes("\n")) {
             return this.getMultilineTextSize(text, options);
         }
